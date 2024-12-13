@@ -1,0 +1,140 @@
+---
+title: "R factor processing"
+author: "James Hardwick"
+date: "2024-12-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = 'C:/Users/jahar/Documents')
+
+```
+
+## Introduction
+Soil loss is a function of range of interacting factors, but the principle driving factor is precipitation expressed by the Rainfall Erosivity (*R*) factor (MJ ha^-1^ h^-1^ y^-1^) (refs). *R* essentially describes the potential ability of rainfall to drive soil loss and is often based on long-term high resolution (sub-hourly) rainfall time series to calculate rainfall kinetic energy and intensity. 
+
+In the Kilombero Valley Catchment (KVC), central Tanzania, there are little high resolution rainfall records, thus we take an alternative approach based of annual rainfall. This approach also enables the integration of future climate change under different share socio-economic pathways (SSPs. Moore (1979) reported a strong correlation between kinetic energy of high intensity storms in East Africa, including Tanzanina, with mean annual precipitation. Thus, to process the R factor rasters for different climate scenarios and time periods we use the empirically derived annual R factor equations (with a distinction made between upland (equ. 1) and lowland areas (equ. 2)): 
+
+*Pe~upland~ = 3.96 x P + 3122* (equation 1)
+
+*Pe~lowland~ = (11.36 x P) - 701* (equation 2)
+
+*R = 17.02 x (0.029 x P~e~ - 26.0)* (equation 3)
+
+Where *R* is the rainfall erosivity factor (MJ mm ha h year), *Pe*  is the kinetic energy (J/m2/year), *P* is the annual rainfall (mm/year) and 17.02 is the conversion factor from imperial to metric units.   
+ 
+A range of SSPs where used to understand catchment responses to soil loss through time under different restoration interventions scenarios. To incorporate different SSPs, five constituent models of CMIP6 where obtained from WorldClim v2.0 for each time period (i.e. 2021 - 2040, 2041 - 2060, 2061 - 2080 and 2081 - 2100). For each pathway and time period the annual precipitation rasters where clipped to the (KVC) and summed to give a total rainfall for each ~ 20 year period. Moore's (1979) *R* equations where then computed for each grid cell to give *R* factor rasters. 
+
+The following code is computationally heavy for standard desktop computer as such we should an example workflow (example: SSP1 2.6 from 2061 - 2080) of the script used to process annual rainfall into *R* factor rasters, this workflow can be run with any of the annual rainfall data found in this repository. 
+
+```{r libraries, warning=FALSE, message=FALSE}
+library(terra) # Hijmans (2024)
+library(tidyterra) # Hernangómez (2023)
+library(tidyverse) # Wickham et al., (2019)
+```
+
+# Importing gridded rainfal data
+Gridded rainfall data is sourced from two separate repositories, historical (i.e. observational) rainfall is collated from Climate Hazards Group InfraRed Precipitation with Station data dataset (Funk et al., 2015) and future monthly rainfall under different SSPs from CMIP6 from WorldClim v 2.0 (Fick et al., 2017).The selection of five constituent models from CMIP6 was random.     
+
+```{r Import gridded rainfal data, warning=FALSE, message=FALSE}
+# SSP 1 - 2.6 2061 - 2080 annual precipitation ---------------------------------------------------------------
+
+# model 1: ACCESS-CM2 
+ssp126_2080_ACCESS_CM2_mp <- rast("C:/Users/jahar/Documents/Tanzania_geomorphology/analysis/KVC_geomorphic_change/rulse/R_factor/SSP126/ssp126_2061_2080/wc2.1_2.5m_prec_ACCESS-CM2_ssp126_2061-2080.tif")
+
+# summing each monthly raster to give annual precipitation 
+ssp126_2080_ACCESS_CM2_ap <-  sum(ssp126_2080_ACCESS_CM2_mp)
+
+# model 2: BCC-CSM2-MR
+ssp126_2080_BCC_CSM2_MR_mp <- rast("C:/Users/jahar/Documents/Tanzania_geomorphology/analysis/KVC_geomorphic_change/rulse/R_factor/SSP126/ssp126_2061_2080/wc2.1_2.5m_prec_BCC-CSM2-MR_ssp126_2061-2080.tif")
+
+# summing each monthly raster to give annual precipitation 
+ssp126_2080_BCC_CSM2_MR_ap <-  sum(ssp126_2080_BCC_CSM2_MR_mp)
+
+# model 3: EC-Earth3-Veg
+ssp126_2080_EC_Earth3_Veg_mp <- rast("C:/Users/jahar/Documents/Tanzania_geomorphology/analysis/KVC_geomorphic_change/rulse/R_factor/SSP126/ssp126_2061_2080/wc2.1_2.5m_prec_EC-Earth3-Veg_ssp126_2061-2080.tif")
+
+# summing each monthly raster to give annual precipitation 
+ssp126_2080_EC_Earth3_Veg_ap <-  sum(ssp126_2080_EC_Earth3_Veg_mp)
+
+# model 4: MIR0C6
+ssp126_2080_MIR0C6_mp <- rast("C:/Users/jahar/Documents/Tanzania_geomorphology/analysis/KVC_geomorphic_change/rulse/R_factor/SSP126/ssp126_2061_2080/wc2.1_2.5m_prec_MIROC6_ssp126_2061-2080.tif")
+
+# summing each monthly raster to give annual precipitation 
+ssp126_2080_MIR0C6_ap <-  sum(ssp126_2080_MIR0C6_mp)
+
+# model 5: UKESM1_0_LL
+ssp126_2080_UKESM1_0_LL_mp <- rast("C:/Users/jahar/Documents/Tanzania_geomorphology/analysis/KVC_geomorphic_change/rulse/R_factor/SSP126/ssp126_2061_2080/wc2.1_2.5m_prec_UKESM1-0-LL_ssp126_2061-2080.tif")
+
+# summing each monthly raster to give annunal precipation 
+ssp126_2080_UKESM1_0_LL_ap <-  sum(ssp126_2080_UKESM1_0_LL_mp)
+
+```
+
+# Stacking annunal precipation rasters from each conistuent model
+Each constituent annual rainfall raster was stacked and the sum was taken to yield total rainfall per 20 year scenario period.  
+
+```{r stacking rasters}
+## mean annual global precipitation from above constituent models  
+
+ssp126_2080_stack <- c(ssp126_2080_ACCESS_CM2_ap, ssp126_2080_BCC_CSM2_MR_ap, ssp126_2080_EC_Earth3_Veg_ap, ssp126_2080_MIR0C6_ap, ssp126_2080_UKESM1_0_LL_ap)
+
+ssp126_2080_MAP <- sum(ssp126_2080_stack)
+
+plot(ssp126_2080_MAP, main = 'ssp126_2080_MAP')
+```
+
+# Coordinate conversion and clipping 
+```{r coords convert and clip, warning=FALSE, message=FALSE}
+# SSPs 2080: boundary clip and crs conversion WGS 84 to UTM 37s ------------------------------------------
+
+# basin boundary
+basin_boundary <- vect("C:/Users/jahar/Documents/Tanzania_geomorphology/KVC_RULSE_R/KVC_RULSE_R/Boundaries/basin_refined.shp")
+
+crs(basin_boundary)
+
+# clip MAP rasters to Tanzania:
+
+# SSP126 - 2080 MAP
+ssp126_2080_MAP_UTM <- project(ssp126_2080_MAP, "EPSG: 32737")
+
+
+SSP126_2080_MAP_clp <- mask(ssp126_2080_MAP_UTM, basin_boundary) %>%
+  trim()
+
+plot(SSP126_2080_MAP_clp, main = 'ssp1 2080')
+
+```
+
+# Calcualting *Pe* and *R*
+```{r}
+# using Moore (1979) emphrically derived equations
+# import dem for elevation threshold 
+dem_1km <- rast("C:/Users/jahar/Documents/AgCARS/RULSE_computing/terrain/dem_1km_clp.tif")
+
+
+dem_1km_aligned <- resample(dem_1km, SSP126_2080_MAP_clp, method = 'bilinear')
+
+inland_mask <- dem_1km_aligned < 1000
+upland_mask <- dem_1km_aligned >= 1000
+
+
+# SSP1 2.6 KE and R factor 
+SSP126_2080_KE_inland = (11.36 * SSP126_2080_MAP_clp) - 701
+
+SSP126_2080_KE_upland = (3.96 * SSP126_2080_MAP_clp) + -3122
+
+
+SSP126_2080_KE_inland_result <- mask(SSP126_2080_KE_inland, inland_mask)
+SSP126_2080_KE_upland_result <- mask(SSP126_2080_KE_upland, upland_mask)
+
+SSP126_2080_KE_rast <- cover(SSP126_2080_KE_inland_result, SSP126_2080_KE_upland_result)
+
+plot(SSP126_2080_KE_rast, main = "Kinetic Energy SSP1 2.6: 2061 - 2080")
+
+R_SSP126_2080<- 17.02*(0.029 * SSP126_2080_KE_rast - 26)
+
+plot(R_SSP126_2080, main = "R factor SSP1 2.6: 2061 - 2080")
+```
+

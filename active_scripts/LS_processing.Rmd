@@ -1,0 +1,65 @@
+---
+title: "LS factor"
+author: "James Hardwick"
+date: "2024-12-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = 'C:/Users/jahar/Documents')
+```
+
+## Length Slope factor 
+
+
+```{r libraries, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(terra)
+library(tidyterra)
+library(whitebox)
+```
+
+
+```{r terrain analysis, echo=FALSE}
+# already cliped to study basin extent and reporjected to UTM 37S from previous project
+SRTM_dem <- rast("C:/Users/jahar/Documents/Tanzania_geomorphology/KVC_RULSE_R/KVC_RULSE_R/LS_factor/SRTM_dem/dem_30m_clp.tif")
+
+# computing slope - degrees -----------------------------------------------
+
+terrain_slope <- terrain(SRTM_dem, 'slope', unit = 'degrees')
+
+plot(terrain_slope)
+
+# computing uplslope contributing area -------------------------------------
+whitebox::wbt_num_upslope_neighbours(SRTM_dem, 
+                                     output = "C:/Users/jahar/Documents/Tanzania_geomorphology/KVC_RULSE_R/KVC_RULSE_R/LS_factor/terrain_UpSlopeCA.tif")
+
+upslope_area <- rast("C:/Users/jahar/Documents/Tanzania_geomorphology/KVC_RULSE_R/KVC_RULSE_R/LS_factor/terrain_UpSlopeCA.tif")
+
+```
+
+```{r calcualting LS factor}
+
+# calcualting LS factor 
+As <- (upslope_area * 30)/22.13 
+B <-  sin(terrain_slope)/0.0896
+
+
+LS_factor <- (As ^ 0.4) * (B ^ 1.4)
+
+# plotting LS factor raster
+plot(LS_factor)
+
+LS_values <- values(LS_factor)
+
+# histogram of LS values
+hist(LS_values, 
+     main = "Histogram of LS Factor", 
+     xlab = "LS Factor", 
+     ylab = "Frequency", 
+     col = "lightblue", 
+     border = "black", 
+     breaks = 50)
+```
+
